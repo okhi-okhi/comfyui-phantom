@@ -15,6 +15,7 @@ class A1111PromptParser:
     RETURN_NAMES = ("clean_prompt", "lora_stack")
     FUNCTION = "parse"
     CATEGORY = "Phantom"
+    OUTPUT_NODE = True
 
     def parse(self, text, seed):
         # 1. Replace Wildcards
@@ -53,4 +54,4 @@ class A1111PromptParser:
         # 3. Clean up double spaces left by removal
         text = re.sub(r'  +', ' ', text).strip()
         
-        return (text, lora_stack)
+        return {"ui": {"text": [text]}, "result": (text, lora_stack)}
