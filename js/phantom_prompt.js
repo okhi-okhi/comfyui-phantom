@@ -1,41 +1,61 @@
 import { app } from "../../scripts/app.js";
-import { ComfyWidgets } from "../../scripts/widgets.js";
 
 app.registerExtension({
   name: "Phantom.A1111PromptParser",
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === "PhantomA1111PromptParser") {
-      const onExecuted = nodeType.prototype.onExecuted;
 
-      nodeType.prototype.onExecuted = function (message) {
-        onExecuted?.apply(this, arguments);
+      const onNodeCreated = nodeType.prototype.onNodeCreated;
+      nodeType.prototype.onNodeCreated = function () {
+        if (onNodeCreated) onNodeCreated.apply(this, arguments);
 
-        if (this.widgets && message.text) {
-          const text_value = message.text.join("");
+        setTimeout(() => {
+          const pop_widget = this.widgets.find((w) => w.name === "populated_text");
+          const mode_widget = this.widgets.find((w) => w.name === "mode");
 
-          // Target the text box widget or create it
-          let widget = this.widgets.find((w) => w.name === "parsed_result");
-          if (!widget) {
-            widget = ComfyWidgets["STRING"](this, "parsed_result", ["STRING", { multiline: true }], app).widget;
+          if (pop_widget && mode_widget) {
+            pop_widget.inputEl.placeholder = "Populated Prompt (Generated automatically)";
 
-            // Force it to be strictly read-only visually and functionally
-            widget.inputEl.readOnly = true;
-            widget.inputEl.style.backgroundColor = "#222"; // Darker background to look disabled
-            widget.inputEl.style.color = "#ccc"; // Dimmer text
-            widget.inputEl.style.opacity = "0.8";
-
-            // Allow selecting text for copying, but disable editing
-            widget.inputEl.addEventListener("keydown", (e) => {
-              if (e.key !== "c" && e.key !== "C" && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
+            const updateState = (val) => {
+              if (val === "populate") {
+                pop_widget.inputEl.disabled = true;
+                pop_widget.inputEl.style.opacity = "0.6";
+              } else {
+                pop_widget.inputEl.disabled = false;
+                pop_widget.inputEl.style.opacity = "1.0";
               }
+            };
+
+            updateState(mode_widget.value);
+
+            const originalComboSet = Object.getOwnPropertyDescriptor(mode_widget.constructor.prototype, "value")?.set;
+
+            let _value = mode_widget.value;
+            Object.defineProperty(mode_widget, "value", {
+              set: (val) => {
+                _value = val;
+                updateState(val);
+                if (originalComboSet) originalComboSet.call(mode_widget, val);
+              },
+              get: () => _value || "populate"
             });
-
-            this.setSize(this.computeSize());
           }
+        }, 10);
+      };
 
-          // Update read-only widget text safely
-          widget.value = text_value;
+      const onExecuted = nodeType.prototype.onExecuted;
+      nodeType.prototype.onExecuted = function (message) {
+        if (onExecuted) onExecuted.apply(this, arguments);
+
+        if (this.widgets && message.string && message.string.length > 0) {
+          const pop_widget = this.widgets.find((w) => w.name === "populated_text");
+          const in_widget = this.widgets.find((w) => w.name === "wildcard_text");
+
+          // Just show current prompt
+          if (pop_widget) pop_widget.value = message.string[0];
+          if (in_widget && message.wildcard && message.wildcard.length > 0) {
+            in_widget.value = message.wildcard[0];
+          }
         }
       };
     }

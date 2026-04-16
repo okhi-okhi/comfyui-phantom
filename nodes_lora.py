@@ -1,5 +1,6 @@
 import folder_paths
 import comfy.utils
+import comfy.sd
 
 class ApplyLoraStack:
     @classmethod
@@ -35,5 +36,6 @@ class ApplyLoraStack:
                 
             lora_model = comfy.utils.load_torch_file(lora_path, safe_load=True)
             model, clip = comfy.sd.load_lora_for_models(model, clip, lora_model, strength_model, strength_clip)
+            print(f"[Phantom LOG] APPLIED LoRA: {lora_name} - Extracted Weight (M: {strength_model} / C: {strength_clip})")
             
         return (model, clip)
